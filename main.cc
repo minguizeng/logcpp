@@ -8,6 +8,7 @@ int main()
     options.log_file_name_prefix = "LOG_";
     options.sync = false;
     options.max_byte_size = MAX_LOG_BYTE_SIZE;
+    options.append_to_console = false;
     Logger::SetOptions(options);
     Logger::SetLevel(Level::INFO);
     LOG_INIT();

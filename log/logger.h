@@ -12,6 +12,7 @@
 #include <condition_variable>
 #include <ctime>
 #include <chrono>
+#include <iostream>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -108,6 +109,7 @@ namespace logcpp
         string log_file_name_prefix;
         bool sync;
         uint64_t max_byte_size;
+        bool append_to_console;
     };
 
     class LoggerFile
@@ -185,6 +187,7 @@ namespace logcpp
             options_.max_byte_size = MAX_LOG_BYTE_SIZE;
             options_.path = "./";
             options_.sync = false;
+            options_.append_to_console = false;
             level_ = Level::INFO;
             exit_ = false;
         }
@@ -299,6 +302,7 @@ namespace logcpp
             options_.log_file_name_prefix = options.log_file_name_prefix == "" ? "LOG_" : options.log_file_name_prefix;
             options_.sync = options.sync;
             options_.max_byte_size = options.max_byte_size <= MIN_LOG_BYTE_SIZE ? MAX_LOG_BYTE_SIZE : options.max_byte_size;
+            options_.append_to_console = options.append_to_console;
         }
         void StartUp0()
         {
@@ -370,6 +374,9 @@ namespace logcpp
             if (log_len <= 0 || !log_queue_.PushBack(buffer))
             {
                 return Status::LOG_WRITE_ERROR;
+            }
+            if(options_.append_to_console){
+                cout << buffer;
             }
             return Status::OK;
         }
