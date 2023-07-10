@@ -278,6 +278,10 @@ namespace logcpp
                 }
                 break;
             }
+            if (options_.append_to_console)
+            {
+                cout << content;
+            }
         }
         void CreateLogFile()
         {
@@ -374,9 +378,6 @@ namespace logcpp
             if (log_len <= 0 || !log_queue_.PushBack(buffer))
             {
                 return Status::LOG_WRITE_ERROR;
-            }
-            if(options_.append_to_console){
-                cout << buffer;
             }
             return Status::OK;
         }
