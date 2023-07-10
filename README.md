@@ -1,3 +1,3 @@
 # logcpp
-Toy logging library for cpp
+简易异步C++日志库
 
