@@ -275,6 +275,7 @@ namespace logcpp
             if (options_.append_to_console)
             {
                 cout << content;
+                fflush(stdout);
             }
         }
         void CreateLogFile()
