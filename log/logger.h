@@ -107,7 +107,6 @@ namespace logcpp
     {
         string path;
         string log_file_name_prefix;
-        bool sync;
         uint64_t max_byte_size;
         bool append_to_console;
     };
@@ -118,12 +117,11 @@ namespace logcpp
         FILE *file_;
         uint64_t max_byte_size_;
         uint64_t current_byte_size_;
-        bool sync_;
         string file_name_;
 
     public:
-        LoggerFile(const string &file_name, uint64_t max_byte_size, bool sync)
-            : file_name_(file_name), max_byte_size_(max_byte_size), current_byte_size_(0), sync_(sync)
+        LoggerFile(const string &file_name, uint64_t max_byte_size)
+            : file_name_(file_name), max_byte_size_(max_byte_size), current_byte_size_(0)
         {
             file_ = fopen(file_name_.c_str(), "a");
         }
@@ -156,10 +154,7 @@ namespace logcpp
                 return Status::LOG_WRITE_ERROR;
             }
             current_byte_size_ += write_size;
-            if (sync_)
-            {
-                fflush(file_);
-            }
+            fflush(file_);
             return Status::OK;
         }
         string &Name()
@@ -186,7 +181,6 @@ namespace logcpp
             options_.log_file_name_prefix = "LOG_";
             options_.max_byte_size = MAX_LOG_BYTE_SIZE;
             options_.path = "./";
-            options_.sync = false;
             options_.append_to_console = false;
             level_ = Level::INFO;
             exit_ = false;
@@ -294,7 +288,7 @@ namespace logcpp
 
             int len = sprintf(buffer, "%s%s%d_%s.log", options_.path.c_str(), options_.log_file_name_prefix.c_str(), getpid(), time.c_str());
             string log_file_name(buffer, len);
-            logger_file_ = make_shared<LoggerFile>(log_file_name, options_.max_byte_size, options_.sync);
+            logger_file_ = make_shared<LoggerFile>(log_file_name, options_.max_byte_size);
         }
         void SetLevel0(Level level)
         {
@@ -304,7 +298,6 @@ namespace logcpp
         {
             options_.path = options.path == "" ? "./" : options.path;
             options_.log_file_name_prefix = options.log_file_name_prefix == "" ? "LOG_" : options.log_file_name_prefix;
-            options_.sync = options.sync;
             options_.max_byte_size = options.max_byte_size <= MIN_LOG_BYTE_SIZE ? MAX_LOG_BYTE_SIZE : options.max_byte_size;
             options_.append_to_console = options.append_to_console;
         }
@@ -315,10 +308,12 @@ namespace logcpp
             while(!exit_){
                 deque<string> result;
                 log_queue_.TakeAll(result);
+                string content;
                 for (auto item : result)
                 {
-                    WriteLog(item);
+                    content += item;
                 }
+                WriteLog(content);
                 this_thread::sleep_for(chrono::milliseconds(10));
             } });
         }
