@@ -218,19 +218,19 @@ namespace logcpp
         {
             Logger::Instance()->Shutdown0();
         }
-        static Status Debug(const string &content, char *file_name, int line)
+        static Status Debug(const string &content, const char *file_name, int line)
         {
             return Logger::Instance()->Log(Level::DEBUG, content, file_name, line);
         }
-        static Status Info(const string &content, char *file_name, int line)
+        static Status Info(const string &content, const char *file_name, int line)
         {
             return Logger::Instance()->Log(Level::INFO, content, file_name, line);
         }
-        static Status Warn(const string &content, char *file_name, int line)
+        static Status Warn(const string &content, const char *file_name, int line)
         {
             return Logger::Instance()->Log(Level::WARN, content, file_name, line);
         }
-        static Status Error(const string &content, char *file_name, int line)
+        static Status Error(const string &content, const char *file_name, int line)
         {
             return Logger::Instance()->Log(Level::ERROR, content, file_name, line);
         }
@@ -326,7 +326,7 @@ namespace logcpp
         {
             exit_ = true;
         }
-        Status Log(Level level, const string &content, char *file_name, int line)
+        Status Log(Level level, const string &content, const char *file_name, int line)
         {
             if (level < level_)
             {
