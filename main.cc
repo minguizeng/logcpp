@@ -4,7 +4,7 @@ using namespace logcpp;
 int main()
 {
     Options options;
-    options.path = "./";
+    options.path = "/dev/shm/";
     options.log_file_name_prefix = "LOG_";
     options.max_byte_size = MAX_LOG_BYTE_SIZE;
     options.append_to_console = false;
@@ -21,6 +21,10 @@ int main()
             printf("log error,status=%d\n",status);
         }
         ++i;
+        if(i>= 20000000){
+            break;
+        }
     }
+    printf("finished!\n");
     return 0;
 }

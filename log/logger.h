@@ -356,7 +356,10 @@ namespace logcpp
         {
             write_thread_ = thread([this]()
                                    {
-            while(!exit_){
+            while(true){
+                if(exit_ && log_queue_.Size() == 0){
+                    break;
+                }
                 deque<Item> result;
                 log_queue_.TakeAll(result);
                 for (auto item : result)
