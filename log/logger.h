@@ -111,6 +111,15 @@ namespace logcpp
         bool append_to_console;
     };
 
+    struct Item{
+        chrono::_V2::system_clock::time_point tp;
+        Level level;
+        long tid;
+        string src_file_name;
+        uint32_t line_number;
+        string content;
+    };
+
     class LoggerFile
     {
     private:
@@ -171,7 +180,7 @@ namespace logcpp
         Level level_;
         bool exit_;
         uint64_t sequence_number_;
-        UnboundedQueue<string> log_queue_;
+        UnboundedQueue<Item> log_queue_;
         thread write_thread_;
 
     public:
@@ -241,13 +250,54 @@ namespace logcpp
             }
             return logger.get();
         }
-        void WriteLog(const string &content)
+        string formatLog(const Item& item){
+            string buffer;
+            buffer.resize(128 + item.content.size());
+            int millisecond = item.tp.time_since_epoch().count() % 1000;
+            time_t timer = std::chrono::system_clock::to_time_t(item.tp);
+            char time_buf[64];
+            int time_str_len = strftime(time_buf, 64, "%Y-%m-%d %H:%M:%S", localtime(&timer));
+            std::sprintf(time_buf + time_str_len, ".%03u", millisecond);
+            std::string real_name = "";
+            std::string file_path(item.src_file_name);
+            int pos = file_path.find_last_of('/');
+            if (pos == file_path.npos)
+            {
+                real_name = item.src_file_name;
+            }
+            else
+            {
+                real_name = file_path.substr(pos + 1);
+            }
+            string level_str = "";
+            switch (item.level)
+            {
+            case DEBUG:
+                level_str = "DEBUG";
+                break;
+            case INFO:
+                level_str = "INFO";
+                break;
+            case WARN:
+                level_str = "WARN";
+                break;
+            case ERROR:
+                level_str = "ERR";
+                break;
+            }
+            int log_len = std::sprintf((char *)buffer.data(), "[%s] %ld %s %s:%d %s\n", time_buf, item.tid, level_str.c_str(), real_name.c_str(), item.line_number,
+                                       item.content.c_str());
+            buffer.resize(log_len);
+            return buffer;
+        }
+        void WriteLog(const Item &item)
         {
             if (logger_file_.get() == nullptr)
             {
                 CreateLogFile();
             }
             int try_count = 3;
+            string content = formatLog(item);
             while (true)
             {
                 if (try_count < 1)
@@ -268,7 +318,7 @@ namespace logcpp
                 }
                 if (status != Status::OK)
                 {
-                    log_queue_.PushHead(content);
+                    log_queue_.PushHead(item);
                 }
                 break;
             }
@@ -307,14 +357,13 @@ namespace logcpp
             write_thread_ = thread([this]()
                                    {
             while(!exit_){
-                deque<string> result;
+                deque<Item> result;
                 log_queue_.TakeAll(result);
-                string content;
                 for (auto item : result)
                 {
-                    content += item;
+                    WriteLog(item);
                 }
-                WriteLog(content);
+                
                 this_thread::sleep_for(chrono::milliseconds(10));
             } });
         }
@@ -324,6 +373,7 @@ namespace logcpp
         }
         Status Log(Level level, const string &content, const char *file_name, int line)
         {
+            thread_local static pid_t tid = syscall(SYS_gettid);
             if (level < level_)
             {
                 return Status::OK;
@@ -332,46 +382,15 @@ namespace logcpp
             {
                 return Status::LOG_BUSY;
             }
-            string buffer;
-            buffer.resize(128 + content.size());
-            auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-            int millisecond = now.time_since_epoch().count() % 1000;
-            time_t timer = std::chrono::system_clock::to_time_t(now);
-            char time_buf[64];
-            int time_str_len = strftime(time_buf, 64, "%Y-%m-%d %H:%M:%S", localtime(&timer));
-            std::sprintf(time_buf + time_str_len, ".%03u", millisecond);
-            std::string real_name = "";
-            std::string file_path(file_name);
-            int pos = file_path.find_last_of('/');
-            if (pos == file_path.npos)
-            {
-                real_name = file_name;
-            }
-            else
-            {
-                real_name = file_path.substr(pos + 1);
-            }
-            string level_str = "";
-            switch (level)
-            {
-            case DEBUG:
-                level_str = "DEBUG";
-                break;
-            case INFO:
-                level_str = "INFO";
-                break;
-            case WARN:
-                level_str = "WARN";
-                break;
-            case ERROR:
-                level_str = "ERR";
-                break;
-            }
-            thread_local static pid_t tid = syscall(SYS_gettid);
-            int log_len = std::sprintf((char *)buffer.data(), "[%s] %ld %s %s:%d %s\n", time_buf, tid, level_str.c_str(), real_name.c_str(), line,
-                                       content.c_str());
-            buffer.resize(log_len);
-            if (log_len <= 0 || !log_queue_.PushBack(buffer))
+
+            Item item;
+            item.content = content;
+            item.level = level;
+            item.line_number = line;
+            item.src_file_name = file_name;
+            item.tid = tid;
+            item.tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            if (!log_queue_.PushBack(item))
             {
                 return Status::LOG_WRITE_ERROR;
             }
