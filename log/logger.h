@@ -163,12 +163,15 @@ namespace logcpp
                 return Status::LOG_WRITE_ERROR;
             }
             current_byte_size_ += write_size;
-            fflush(file_);
             return Status::OK;
         }
         string &Name()
         {
             return file_name_;
+        }
+
+        void flush(){
+            fflush(file_);
         }
     };
 
@@ -366,7 +369,7 @@ namespace logcpp
                 {
                     WriteLog(item);
                 }
-                
+                logger_file_->flush();
                 this_thread::sleep_for(chrono::milliseconds(10));
             } });
         }
